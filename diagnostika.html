@@ -1,0 +1,918 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Диагностика: Кто ты в мире ИИ?</title>
+    <style>
+        :root {
+            --accent: #7C3AED;
+            --green: #B6E85A;
+            --text: #FFFFFF;
+            --text-secondary: rgba(255, 255, 255, 0.7);
+            --card: rgba(255, 255, 255, 0.06);
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            min-height: 100vh;
+            background: linear-gradient(160deg, #1A1A3E 0%, #2D1B69 100%);
+            color: var(--text);
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            -webkit-font-smoothing: antialiased;
+            overflow-x: hidden;
+        }
+
+        /* Декоративные цветные пятна — чтобы backdrop-filter было что размывать */
+        .bg {
+            position: fixed;
+            inset: 0;
+            z-index: -1;
+            overflow: hidden;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(80px);
+            opacity: 0.5;
+        }
+
+        .blob-1 {
+            width: 420px;
+            height: 420px;
+            background: var(--accent);
+            top: -120px;
+            right: -120px;
+        }
+
+        .blob-2 {
+            width: 380px;
+            height: 380px;
+            background: var(--green);
+            bottom: -140px;
+            left: -140px;
+            opacity: 0.3;
+        }
+
+        .container {
+            max-width: 560px;
+            margin: 0 auto;
+            padding: 40px 24px;
+        }
+
+        .card {
+            background: rgba(255, 255, 255, 0.04);
+            backdrop-filter: blur(20px);
+            -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 24px;
+            padding: 32px 24px;
+            overflow: hidden;
+        }
+
+        .card.slide-in-right {
+            animation: slide-in-right 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        .card.slide-in-left {
+            animation: slide-in-left 0.42s cubic-bezier(0.22, 1, 0.36, 1) both;
+        }
+
+        [hidden] {
+            display: none !important;
+        }
+
+        .sr-only {
+            position: absolute;
+            width: 1px;
+            height: 1px;
+            padding: 0;
+            margin: -1px;
+            overflow: hidden;
+            clip: rect(0, 0, 0, 0);
+            white-space: nowrap;
+            border: 0;
+        }
+
+        .icon {
+            width: 1.2em;
+            height: 1.2em;
+            fill: none;
+            stroke: currentColor;
+            stroke-width: 1.7;
+            stroke-linecap: round;
+            stroke-linejoin: round;
+            flex-shrink: 0;
+        }
+
+        /* ——— Анимации ——— */
+        @keyframes slide-in-right {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes slide-in-left {
+            from { transform: translateX(-100%); }
+            to { transform: translateX(0); }
+        }
+
+        @keyframes option-pop {
+            0% { transform: scale(1); }
+            45% { transform: scale(1.07); }
+            100% { transform: scale(1); }
+        }
+
+        @keyframes content-in {
+            from { transform: translateX(100%); }
+            to { transform: translateX(0); }
+        }
+
+        .question-text.anim,
+        .options.anim {
+            animation: content-in 0.4s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        h1 {
+            font-size: 28px;
+            font-weight: 700;
+            line-height: 1.25;
+            margin-bottom: 12px;
+        }
+
+        .subtitle {
+            font-size: 17px;
+            color: var(--text-secondary);
+            line-height: 1.5;
+            margin-bottom: 20px;
+        }
+
+        .instruction {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 28px;
+        }
+
+        .btn {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            width: 100%;
+            min-height: 52px;
+            padding: 16px 20px;
+            background: var(--accent);
+            color: var(--text);
+            border: none;
+            border-radius: 14px;
+            font-size: 17px;
+            font-weight: 600;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .btn-icon {
+            width: 20px;
+            height: 20px;
+        }
+
+        .btn:hover {
+            filter: brightness(1.08);
+        }
+
+        .btn:active {
+            transform: scale(0.98);
+        }
+
+        .btn:focus-visible {
+            outline: 3px solid #fff;
+            outline-offset: 2px;
+        }
+
+        .btn-secondary {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        /* ——— Экран вопросов ——— */
+
+        .progress {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 24px;
+        }
+
+        .dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.25);
+            transition: all 0.3s ease;
+        }
+
+        .dot.done,
+        .dot.active {
+            background: var(--accent);
+        }
+
+        .dot.active {
+            width: 16px;
+            height: 16px;
+        }
+
+        .counter {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-align: center;
+            margin-bottom: 12px;
+        }
+
+        .question-text {
+            font-size: 20px;
+            font-weight: 700;
+            line-height: 1.4;
+            margin-bottom: 24px;
+        }
+
+        .options {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .option {
+            display: flex;
+            align-items: center;
+            gap: 14px;
+            width: 100%;
+            min-height: 56px;
+            padding: 14px 16px;
+            background: var(--card);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+            border-radius: 14px;
+            color: var(--text);
+            font-size: 16px;
+            line-height: 1.45;
+            text-align: left;
+            font-family: inherit;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .option:active {
+            transform: scale(0.98);
+        }
+
+        .option:hover:not(:disabled):not(.selected) {
+            background: rgba(255, 255, 255, 0.1);
+        }
+
+        .option:focus-visible {
+            outline: 3px solid #fff;
+            outline-offset: 2px;
+        }
+
+        .option:disabled {
+            cursor: default;
+            opacity: 0.55;
+            transform: none;
+        }
+
+        .option.selected {
+            background: var(--accent);
+            border-color: var(--accent);
+            color: var(--text);
+            animation: option-pop 0.32s cubic-bezier(0.22, 1, 0.36, 1);
+        }
+
+        .letter {
+            flex: 0 0 auto;
+            width: 36px;
+            height: 36px;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.12);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 700;
+            font-size: 15px;
+        }
+
+        .option.selected .letter {
+            background: rgba(255, 255, 255, 0.25);
+        }
+
+        /* ——— Экран результатов ——— */
+
+        .result-head {
+            text-align: center;
+            margin-bottom: 28px;
+        }
+
+        .result-icon-wrap {
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .result-icon {
+            width: 60px;
+            height: 60px;
+            stroke-width: 1.4;
+        }
+
+        .result-title {
+            font-size: 15px;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            color: var(--text-secondary);
+            margin-bottom: 8px;
+        }
+
+        .result-role {
+            font-size: 24px;
+            font-weight: 700;
+        }
+
+        .scales {
+            margin-bottom: 28px;
+        }
+
+        .scale-row {
+            margin-bottom: 16px;
+        }
+
+        .scale-label {
+            display: flex;
+            justify-content: space-between;
+            font-size: 14px;
+            color: var(--text-secondary);
+            margin-bottom: 6px;
+        }
+
+        .scale-label strong {
+            color: var(--text);
+        }
+
+        .scale-track {
+            height: 10px;
+            border-radius: 999px;
+            background: rgba(255, 255, 255, 0.1);
+            overflow: hidden;
+        }
+
+        .scale-fill {
+            height: 100%;
+            width: 0;
+            border-radius: 999px;
+            transition: width 0.6s ease;
+        }
+
+        .rec-block {
+            background: var(--card);
+            border-radius: 14px;
+            padding: 16px;
+            margin-bottom: 14px;
+        }
+
+        .rec-block h3 {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            font-size: 16px;
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+
+        .rec-icon {
+            width: 20px;
+            height: 20px;
+            color: var(--accent);
+            stroke-width: 1.8;
+        }
+
+        .rec-block p {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+        }
+
+        .rec-block ul {
+            margin: 0;
+            padding-left: 18px;
+        }
+
+        .rec-block li {
+            font-size: 15px;
+            color: var(--text-secondary);
+            line-height: 1.6;
+            margin-bottom: 6px;
+        }
+
+        .result-actions {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            margin-top: 24px;
+        }
+
+        /* ——— Адаптивность ——— */
+
+        @media (max-width: 480px) {
+            .container {
+                padding: 16px;
+            }
+
+            .card {
+                padding: 24px 16px;
+                border-radius: 20px;
+            }
+
+            h1 {
+                font-size: 24px;
+            }
+
+            .question-text {
+                font-size: 17px;
+            }
+
+            .option {
+                font-size: 15px;
+                min-height: 48px;
+            }
+
+            .btn {
+                min-height: 48px;
+            }
+
+            .result-role {
+                font-size: 21px;
+            }
+        }
+
+        /* ——— Снижение анимаций ——— */
+        @media (prefers-reduced-motion: reduce) {
+            * {
+                transition-duration: 0.01ms !important;
+                animation-duration: 0.01ms !important;
+                scroll-behavior: auto !important;
+            }
+        }
+
+        /* ——— Печать / PDF ——— */
+        @media print {
+            @page {
+                margin: 14mm;
+            }
+
+            body {
+                background: #fff;
+                color: #1a1a1a;
+            }
+
+            .bg {
+                display: none !important;
+            }
+
+            .container {
+                max-width: none;
+                padding: 0;
+            }
+
+            .card {
+                background: none;
+                border: none;
+                backdrop-filter: none;
+                -webkit-backdrop-filter: none;
+                padding: 0;
+            }
+
+            .result-actions {
+                display: none !important;
+            }
+
+            .result-title,
+            .scale-label,
+            .rec-block p,
+            .rec-block li {
+                color: #444;
+            }
+
+            .scale-label strong {
+                color: #1a1a1a;
+            }
+
+            .scale-track {
+                background: #ececec;
+            }
+
+            .scale-fill {
+                -webkit-print-color-adjust: exact;
+                print-color-adjust: exact;
+            }
+
+            .rec-block {
+                background: #f6f6f6;
+                border: 1px solid #e5e5e5;
+            }
+        }
+    </style>
+</head>
+<body>
+<svg xmlns="http://www.w3.org/2000/svg" style="display:none" aria-hidden="true">
+    <symbol id="icon-compass" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="10"/>
+        <polygon points="16.24 7.76 14.12 14.12 7.76 16.24 9.88 9.88 16.24 7.76"/>
+    </symbol>
+    <symbol id="icon-gear" viewBox="0 0 24 24">
+        <circle cx="12" cy="12" r="3"/>
+        <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 0 1 0 2.83 2 2 0 0 1-2.83 0l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 0 1-2 2 2 2 0 0 1-2-2v-.09A1.65 1.65 0 0 0 9 19.4a1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 0 1-2.83 0 2 2 0 0 1 0-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 0 1-2-2 2 2 0 0 1 2-2h.09A1.65 1.65 0 0 0 4.6 9a1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 0 1 0-2.83 2 2 0 0 1 2.83 0l.06.06a1.65 1.65 0 0 0 1.82.33H9a1.65 1.65 0 0 0 1-1.51V3a2 2 0 0 1 2-2 2 2 0 0 1 2 2v.09a1.65 1.65 0 0 0 1 1.51 1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 0 1 2.83 0 2 2 0 0 1 0 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82V9a1.65 1.65 0 0 0 1.51 1H21a2 2 0 0 1 2 2 2 2 0 0 1-2 2h-.09a1.65 1.65 0 0 0-1.51 1z"/>
+    </symbol>
+    <symbol id="icon-shield" viewBox="0 0 24 24">
+        <path d="M12 22s8-4 8-10V5l-8-3-8 3v7c0 6 8 10 8 10z"/>
+    </symbol>
+    <symbol id="icon-box" viewBox="0 0 24 24">
+        <path d="M21 16V8a2 2 0 0 0-1-1.73l-7-4a2 2 0 0 0-2 0l-7 4A2 2 0 0 0 3 8v8a2 2 0 0 0 1 1.73l7 4a2 2 0 0 0 2 0l7-4A2 2 0 0 0 21 16z"/>
+        <polyline points="3.27 6.96 12 12.01 20.73 6.96"/>
+        <line x1="12" y1="22.08" x2="12" y2="12"/>
+    </symbol>
+    <symbol id="icon-check-circle" viewBox="0 0 24 24">
+        <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+        <polyline points="22 4 12 14.01 9 11.01"/>
+    </symbol>
+    <symbol id="icon-trending-up" viewBox="0 0 24 24">
+        <polyline points="23 6 13.5 15.5 8.5 10.5 1 18"/>
+        <polyline points="17 6 23 6 23 12"/>
+    </symbol>
+    <symbol id="icon-book-open" viewBox="0 0 24 24">
+        <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
+        <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+    </symbol>
+    <symbol id="icon-printer" viewBox="0 0 24 24">
+        <polyline points="6 9 6 2 18 2 18 9"/>
+        <path d="M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2"/>
+        <rect x="6" y="14" width="12" height="8"/>
+    </symbol>
+    <symbol id="icon-rotate-ccw" viewBox="0 0 24 24">
+        <polyline points="1 4 1 10 7 10"/>
+        <path d="M3.51 15a9 9 0 1 0 2.13-9.36L1 10"/>
+    </symbol>
+</svg>
+
+<div class="bg" aria-hidden="true">
+    <div class="blob blob-1"></div>
+    <div class="blob blob-2"></div>
+</div>
+
+<div class="sr-only" aria-live="polite" id="announcer"></div>
+
+<div class="container" role="main">
+    <!-- Экран 1: Стартовый -->
+    <section id="screen-start" class="card slide-in-right">
+        <h1 tabindex="-1">Диагностика: Кто ты в мире ИИ?</h1>
+        <p class="subtitle">Определи свой уровень владения искусственным интеллектом за 2 минуты</p>
+        <p class="instruction">Ответьте на 5 ситуационных вопросов — выберите вариант, который наиболее близок вашему
+            стилю работы. В конце вы узнаете, какая роль вам ближе: Оператор, Навигатор, Критик или Создатель ИИ — и
+            получите персональные рекомендации по развитию навыков. Результаты можно будет сохранить в виде файла.</p>
+        <button id="btn-start" class="btn">Начать тест</button>
+    </section>
+
+    <!-- Экран 2: Вопросы -->
+    <section id="screen-quiz" class="card" hidden>
+        <div class="progress" id="progress" aria-hidden="true"></div>
+        <p class="counter" id="counter"></p>
+        <h2 class="question-text" id="question-text" tabindex="-1"></h2>
+        <div class="options" id="options"></div>
+    </section>
+
+    <!-- Экран 3: Результаты -->
+    <section id="screen-result" class="card" hidden>
+        <div class="result-head">
+            <div class="result-icon-wrap" id="result-emoji"></div>
+            <div class="result-title">Ваш результат</div>
+            <div class="result-role" id="result-role" tabindex="-1"></div>
+        </div>
+
+        <div class="scales" id="scales"></div>
+
+        <div class="rec-block">
+            <h3><svg class="icon rec-icon" aria-hidden="true"><use href="#icon-check-circle"/></svg>Уровень 1. Сделайте завтра</h3>
+            <p id="rec-level1"></p>
+        </div>
+        <div class="rec-block">
+            <h3><svg class="icon rec-icon" aria-hidden="true"><use href="#icon-trending-up"/></svg>Уровень 2. Куда расти дальше</h3>
+            <ul id="rec-level2"></ul>
+        </div>
+        <div class="rec-block">
+            <h3><svg class="icon rec-icon" aria-hidden="true"><use href="#icon-book-open"/></svg>Для продвинутых</h3>
+            <ul id="rec-level3"></ul>
+        </div>
+
+        <div class="result-actions">
+            <button id="btn-save" class="btn"><svg class="icon btn-icon" aria-hidden="true"><use href="#icon-printer"/></svg>Скачать PDF</button>
+            <button id="btn-restart" class="btn btn-secondary"><svg class="icon btn-icon" aria-hidden="true"><use href="#icon-rotate-ccw"/></svg>Пройти заново</button>
+        </div>
+    </section>
+</div>
+
+<script>
+    const ROLES = [
+        { id: 'navigator', name: 'Навигатор', icon: 'icon-compass', from: '#7C3AED', to: '#6D28D9' },
+        { id: 'operator', name: 'Оператор', icon: 'icon-gear', from: '#3B82F6', to: '#1D4ED8' },
+        { id: 'critic', name: 'Критик', icon: 'icon-shield', from: '#F59E0B', to: '#D97706' },
+        { id: 'creator', name: 'Создатель ИИ', icon: 'icon-box', from: '#10B981', to: '#059669' },
+    ];
+
+    const QUESTIONS = [
+        {
+            text: 'Вы хотите освоить новую тему или навык, который может пригодиться в работе или жизни. У вас есть доступ к ChatGPT, нейросетям для генерации изображений и видео. Как вы начнёте?',
+            options: [
+                { role: 'operator', text: 'Попрошу ИИ составить мне учебный план, подобрать материалы и расписание — так я быстрее войду в тему.' },
+                { role: 'navigator', text: 'Сначала сам определю, для чего мне это нужно, какой результат хочу получить, и только потом использую ИИ для структурирования и поиска ресурсов.' },
+                { role: 'critic', text: 'Не буду использовать ИИ на старте — лучше почитаю книги, посмотрю проверенные курсы, чтобы не исказить понимание.' },
+            ],
+        },
+        {
+            text: 'Вам нужно подготовить важный документ (отчёт, презентацию, статью). Вы загружаете данные в нейросеть, она выдаёт готовый текст. Как вы поступите?',
+            options: [
+                { role: 'navigator', text: 'Проверяю ключевые факты и цифры, но в целом доверяю структуре — ИИ неплохо справляется с такими задачами.' },
+                { role: 'operator', text: 'Использую текст как есть — экономит время, а начальнику/заказчику главное — результат.' },
+                { role: 'critic', text: 'Перепроверяю каждую цифру, ищу первоисточники, переформулирую часть выводов самостоятельно — ответственность за содержание несу я.' },
+            ],
+        },
+        {
+            text: 'В вашей семье или в рабочей группе возник спор: можно ли использовать нейросети для творческих задач (рисунки, тексты, музыка) без ограничений. Кто-то за полную свободу, кто-то против. Как вы поступите?',
+            options: [
+                { role: 'navigator', text: 'Предлагаю собрать всех и вместе выработать понятные правила: где использование ИИ уместно и развивает, а где обесценивает творчество, и аргументировать это для всех.' },
+                { role: 'navigator', text: 'Считаю, что каждый должен решать сам, это вопрос личных предпочтений, не нужно общих правил.' },
+                { role: 'critic', text: 'Ввожу полный запрет на ИИ в творчестве — без контроля люди перестанут думать сами.' },
+            ],
+        },
+        {
+            text: 'Вам предлагают готовое ИИ-решение, которое "автоматизирует всё" ваши рутинные задачи (планирование, отчёты, почту). Стоит дорого. Как вы поступите?',
+            options: [
+                { role: 'navigator', text: 'Изучаю, какие именно задачи это закрывает, сравниваю с другими вариантами (включая бесплатные или комбинацию простых инструментов), и беру только то, что реально нужно.' },
+                { role: 'operator', text: 'Если бюджет позволяет — подключаю, разберусь по ходу. Главное — снять рутину.' },
+                { role: 'creator', text: 'Прошу техническую документацию, анализирую алгоритмы, оцениваю, можно ли создать подобное решение внутри компании/самостоятельно.' },
+            ],
+        },
+        {
+            text: 'Вы используете ИИ для подготовки аналитического отчёта для руководства или публикации. Текст выглядит убедительно, цифры гладкие. Как вы поступите?',
+            options: [
+                { role: 'navigator', text: 'Перечитываю, проверяю выводы, прошу ИИ визуализировать ключевые тренды, затем сам расставляю смысловые акценты и решаю, в каком формате подать (презентация, дашборд).' },
+                { role: 'operator', text: 'Отправляю как есть — структура логичная, время на перепроверку избыточно.' },
+                { role: 'creator', text: 'Предлагаю создать систему, которая будет автоматически накапливать данные и генерировать отчёты в связке с предыдущими, чтобы не делать это каждый раз вручную.' },
+            ],
+        },
+    ];
+
+    const RECOMMENDATIONS = {
+        navigator: {
+            level1: 'Возьмите любую задачу, которую вы делаете каждый день, и опишите её в трёх словах: что я делаю → зачем я это делаю → для кого. Затем спросите себя: «А можно ли эту задачу решить по-другому?» Запишите один альтернативный способ.',
+            level2: [
+                'Учитесь видеть связи между задачами. Не решайте проблемы по отдельности — ищите, как они связаны друг с другом. Например, если вы настраиваете один процесс, подумайте, на что ещё он влияет.',
+                'Тренируйтесь задавать вопросы вместо того, чтобы давать ответы. Вместо «сделайте так» спросите «а что, если сделать иначе?». Это поможет вам и другим находить неочевидные решения.',
+                'Рефлексируйте не только результаты, но и свой подход. После завершения задачи спросите себя: «А правильно ли я строил свою работу? Что я могу изменить в следующий раз?»',
+            ],
+            level3: [
+                '«Разум и природа» Грегори Бейтсона — о том, как видеть паттерны и связи в любых системах.',
+                '«Хорошо устроенная голова» Эдгара Морена — о том, как связывать знания из разных областей.',
+            ],
+        },
+        operator: {
+            level1: 'Перед тем как попросить ИИ что-то сделать, напишите на листке бумаги: «Какую проблему я решаю?» Если вы не можете ответить на этот вопрос чётко — отложите запрос, подумайте ещё 5 минут и сформулируйте.',
+            level2: [
+                'Развивайте привычку перепроверять. ИИ часто выдаёт «гладкий», но не всегда точный ответ. Сверяйте ключевые факты с тем, что вы уже знаете, или с другим источником.',
+                'Учитесь формулировать цели. Вместо «сделай отчёт» — «мне нужен отчёт, чтобы показать рост продаж за месяц, основные выводы — в начале, детали — в конце». Чем чётче цель, тем лучше результат.',
+                'Понимайте, что ИИ — это инструмент, а не замена мышления. Он хорош для рутины, но слаб в ситуациях, где нужны интуиция, опыт и понимание контекста. Не бойтесь делать часть работы сами.',
+            ],
+            level3: [
+                '«Семь сложных уроков образования будущего» Эдгара Морена — о том, почему упрощение знания делает нас «слепыми» в других областях.',
+            ],
+        },
+        critic: {
+            level1: 'Выберите одну небольшую, неважную задачу (например, придумать меню на неделю, написать черновик письма или составить список дел) и полностью доверьте её ИИ. Не проверяйте результат досконально — просто посмотрите, что получилось. Скорее всего, вы удивитесь, насколько это может быть полезно.',
+            level2: [
+                'Учитесь различать «опасно» и «просто непривычно». Многие вещи, которые кажутся рискованными, на самом деле безопасны, если их пробовать понемногу. Начните с малого — и вы увидите, что страх постепенно уходит.',
+                'Развивайте гибкость. Вместо «это нельзя» или «это неправильно» попробуйте говорить «это можно попробовать в таких-то условиях». Так вы останетесь в контроле, но не будете блокировать возможности.',
+                'Учитесь доносить свою позицию конструктивно. Вместо «запрещаю» объясняйте «почему это может быть рискованно» и «как можно сделать безопаснее». Так ваши идеи будут слышать и принимать.',
+            ],
+            level3: [
+                '«Воспитание умственное, нравственное и физическое» Герберта Спенсера — о гармоничном развитии и балансе между свободой и контролем.',
+                '«Введение в комплексное мышление» Эдгара Морена — о том, как видеть связи, а не только разрывы.',
+            ],
+        },
+        creator: {
+            level1: 'Возьмите любое своё ИИ-решение (или идею) и объясните его человеку, который вообще не разбирается в технологиях: вашей маме, супругу или другу. Если он понял — вы отлично справились. Если нет — переформулируйте. Это поможет вам делать продукты, которые действительно нужны людям.',
+            level2: [
+                'Не замыкайтесь в технике. Самое сильное решение — это то, которое решает человеческую проблему, а не просто работает. Учитесь слушать пользователей и видеть их настоящие потребности.',
+                'Учитесь выбирать, что не делать. ИИ даёт бесконечные возможности, но ваше время и ресурсы ограничены. Сосредоточьтесь на том, что принесёт реальную пользу, а не на всём подряд.',
+                'Задумывайтесь о последствиях. Ваше решение повлияет на поведение людей. Представляйте, как именно, и задавайте себе вопрос: «Я бы хотел, чтобы мой ребёнок пользовался этим?»',
+            ],
+            level3: [
+                '«Разум и природа» Грегори Бейтсона — о том, что разум — это не только вычислительные процессы.',
+                '«Основания науки о нравственности» Герберта Спенсера — о том, как ваше творение влияет на общество.',
+            ],
+        },
+        tie: {
+            level1: 'Составьте список из трёх своих сильных сторон (по одной из каждой роли, которая у вас проявилась). Например: «Я хорошо анализирую, быстро делаю и вижу риски». А теперь подумайте: какая задача требует сочетания именно этих трёх качеств? Найдите её и сделайте.',
+            level2: [
+                'Выберите одну роль в качестве основной. Вы можете быть многогранны, но если вы попытаетесь быть всем одновременно — вы не будете ничем конкретно. Выберите одно направление для развития на ближайший год.',
+                'Интегрируйте роли в одном проекте. Найдите задачу, которая требует всех ваших сильных сторон, и выполните её — от идеи до результата. Вы увидите, как разные роли дополняют друг друга.',
+                'Рассказывайте о своей многогранности как о силе. Когда вы говорите о себе — делайте акцент на том, что вы умеете сочетать разное, а не на том, что не можете выбрать одно.',
+            ],
+            level3: [
+                '«Хорошо устроенная голова» Эдгара Морена — о том, как удерживать разные знания в связке.',
+                '«Воспитание умственное, нравственное и физическое» Герберта Спенсера — о развитии индивидуальности.',
+            ],
+        },
+    };
+
+    const LETTERS = ['А', 'Б', 'В'];
+
+    const screenStart = document.getElementById('screen-start');
+    const screenQuiz = document.getElementById('screen-quiz');
+    const screenResult = document.getElementById('screen-result');
+    const progressEl = document.getElementById('progress');
+    const counterEl = document.getElementById('counter');
+    const questionTextEl = document.getElementById('question-text');
+    const optionsEl = document.getElementById('options');
+
+    const resultEmojiEl = document.getElementById('result-emoji');
+    const resultRoleEl = document.getElementById('result-role');
+    const scalesEl = document.getElementById('scales');
+    const recLevel1El = document.getElementById('rec-level1');
+    const recLevel2El = document.getElementById('rec-level2');
+    const recLevel3El = document.getElementById('rec-level3');
+
+    const announcer = document.getElementById('announcer');
+
+    function announce(msg) {
+        announcer.textContent = '';
+        requestAnimationFrame(() => {
+            announcer.textContent = msg;
+        });
+    }
+
+    let currentQuestion = 0;
+    let answers = [];
+    let answered = false;
+
+    function showScreen(screen, direction = 'forward') {
+        [screenStart, screenQuiz, screenResult].forEach(s => (s.hidden = s !== screen));
+        screen.classList.remove('slide-in-right', 'slide-in-left');
+        void screen.offsetWidth;
+        screen.classList.add(direction === 'back' ? 'slide-in-left' : 'slide-in-right');
+    }
+
+    function renderQuestion() {
+        answered = false;
+        const q = QUESTIONS[currentQuestion];
+
+        progressEl.innerHTML = '';
+        for (let i = 0; i < QUESTIONS.length; i++) {
+            const dot = document.createElement('span');
+            dot.className = 'dot';
+            if (i < currentQuestion) dot.classList.add('done');
+            if (i === currentQuestion) dot.classList.add('active');
+            progressEl.appendChild(dot);
+        }
+
+        counterEl.textContent = `Вопрос ${currentQuestion + 1} из ${QUESTIONS.length}`;
+        questionTextEl.textContent = q.text;
+
+        optionsEl.innerHTML = q.options
+            .map((opt, i) => `
+                <button class="option" data-index="${i}">
+                    <span class="letter">${LETTERS[i]}</span>
+                    <span>${opt.text}</span>
+                </button>
+            `)
+            .join('');
+
+        if (currentQuestion > 0) {
+            questionTextEl.classList.remove('anim');
+            optionsEl.classList.remove('anim');
+            void questionTextEl.offsetWidth;
+            questionTextEl.classList.add('anim');
+            optionsEl.classList.add('anim');
+        }
+
+        questionTextEl.focus({ preventScroll: true });
+        announce(`Вопрос ${currentQuestion + 1} из ${QUESTIONS.length}`);
+    }
+
+    function selectOption(index) {
+        if (answered) return;
+        answered = true;
+
+        const q = QUESTIONS[currentQuestion];
+        answers.push(q.options[index].role);
+
+        const buttons = optionsEl.querySelectorAll('.option');
+        buttons.forEach((btn, i) => {
+            if (i === index) btn.classList.add('selected');
+            else btn.disabled = true;
+        });
+
+        setTimeout(() => {
+            currentQuestion++;
+            if (currentQuestion < QUESTIONS.length) {
+                renderQuestion();
+            } else {
+                showResult();
+            }
+        }, 400);
+    }
+
+    function computeResults() {
+        const counts = { navigator: 0, operator: 0, critic: 0, creator: 0 };
+        answers.forEach(role => counts[role]++);
+
+        const max = Math.max(...Object.values(counts));
+        const tiedRoles = ROLES.filter(r => counts[r.id] === max);
+
+        const percentages = {};
+        ROLES.forEach(r => {
+            percentages[r.id] = Math.round((counts[r.id] / QUESTIONS.length) * 100);
+        });
+
+        const roleId = tiedRoles.length > 1 ? 'tie' : tiedRoles[0].id;
+        return { roleId, tiedRoles, percentages };
+    }
+
+    function roleIconHtml(role) {
+        return `<svg class="icon result-icon" style="color:${role.from}" aria-hidden="true"><use href="#${role.icon}"/></svg>`;
+    }
+
+    function showResult() {
+        const { roleId, tiedRoles, percentages } = computeResults();
+        const rec = RECOMMENDATIONS[roleId];
+
+        if (roleId === 'tie') {
+            resultEmojiEl.innerHTML = tiedRoles.map(roleIconHtml).join('');
+            resultRoleEl.textContent = 'Вы — ' + tiedRoles.map(r => r.name).join(' + ');
+        } else {
+            const role = ROLES.find(r => r.id === roleId);
+            resultEmojiEl.innerHTML = roleIconHtml(role);
+            resultRoleEl.textContent = 'Вы — ' + role.name;
+        }
+
+        scalesEl.innerHTML = ROLES.map(r => `
+            <div class="scale-row">
+                <div class="scale-label"><strong>${r.name}</strong><span>${percentages[r.id]}%</span></div>
+                <div class="scale-track">
+                    <div class="scale-fill" data-id="${r.id}" style="background: linear-gradient(90deg, ${r.from}, ${r.to});"></div>
+                </div>
+            </div>
+        `).join('');
+
+        recLevel1El.textContent = rec.level1;
+        recLevel2El.innerHTML = rec.level2.map(b => `<li>${b}</li>`).join('');
+        recLevel3El.innerHTML = rec.level3.map(b => `<li>${b}</li>`).join('');
+
+        showScreen(screenResult);
+
+        resultRoleEl.focus({ preventScroll: true });
+        announce('Результат готов: ' + resultRoleEl.textContent);
+
+        requestAnimationFrame(() => {
+            requestAnimationFrame(() => {
+                scalesEl.querySelectorAll('.scale-fill').forEach(el => {
+                    el.style.width = percentages[el.dataset.id] + '%';
+                });
+            });
+        });
+    }
+
+    function restart() {
+        currentQuestion = 0;
+        answers = [];
+        showScreen(screenStart, 'back');
+        document.querySelector('#screen-start h1').focus({ preventScroll: true });
+    }
+
+    document.getElementById('btn-start').addEventListener('click', () => {
+        showScreen(screenQuiz);
+        renderQuestion();
+    });
+
+    optionsEl.addEventListener('click', e => {
+        const btn = e.target.closest('.option');
+        if (!btn || answered) return;
+        selectOption(Number(btn.dataset.index));
+    });
+
+    document.getElementById('btn-save').addEventListener('click', () => window.print());
+    document.getElementById('btn-restart').addEventListener('click', restart);
+</script>
+</body>
+</html>
