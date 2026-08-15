@@ -506,8 +506,8 @@
             }
         }
 
-        /* ——— Экспорт PDF ——— */
-        #screen-result.pdf-capture {
+        /* ——— Экспорт PDF (только на скрытом клоне .pdf-capture) ——— */
+        .pdf-capture {
             background: #ffffff !important;
             color: #1a1a1a !important;
             border: none !important;
@@ -517,7 +517,7 @@
             animation: none !important;
         }
 
-        #screen-result.pdf-capture .pdf-brand {
+        .pdf-capture .pdf-brand {
             display: flex;
             justify-content: center;
             margin-bottom: 24px;
@@ -526,50 +526,62 @@
             border-radius: 12px;
         }
 
-        #screen-result.pdf-capture .pdf-brand img {
+        .pdf-capture .pdf-brand img {
             display: block;
             width: min(100%, 260px);
             height: auto;
             filter: none;
         }
 
-        #screen-result.pdf-capture .result-actions {
+        .pdf-capture .result-actions {
             display: none !important;
         }
 
-        #screen-result.pdf-capture .result-title,
-        #screen-result.pdf-capture .scale-label,
-        #screen-result.pdf-capture .rec-block p,
-        #screen-result.pdf-capture .rec-block li {
+        .pdf-capture .result-title,
+        .pdf-capture .scale-label,
+        .pdf-capture .rec-block p,
+        .pdf-capture .rec-block li {
             color: #444444 !important;
         }
 
-        #screen-result.pdf-capture .result-role,
-        #screen-result.pdf-capture .scale-label strong,
-        #screen-result.pdf-capture .rec-block h3 {
+        .pdf-capture .result-role,
+        .pdf-capture .scale-label strong,
+        .pdf-capture .rec-block h3 {
             color: #1a1a1a !important;
         }
 
-        #screen-result.pdf-capture .scale-track {
+        .pdf-capture .scale-track {
             background: #ececec !important;
         }
 
-        #screen-result.pdf-capture .scale-fill {
+        .pdf-capture .scale-fill {
             -webkit-print-color-adjust: exact;
             print-color-adjust: exact;
             background: #731DD8 !important;
         }
 
-        #screen-result.pdf-capture .rec-block {
+        .pdf-capture .rec-block {
             background: #f6f6f6 !important;
             border: 1px solid #e5e5e5 !important;
         }
 
-        #screen-result.pdf-capture .icon,
-        #screen-result.pdf-capture .result-icon,
-        #screen-result.pdf-capture .rec-icon,
-        #screen-result.pdf-capture .btn-icon {
+        .pdf-capture .icon,
+        .pdf-capture .result-icon,
+        .pdf-capture .rec-icon,
+        .pdf-capture .btn-icon {
             color: #731DD8 !important;
+        }
+
+        .pdf-export-host {
+            position: fixed;
+            left: 0;
+            top: 0;
+            width: 560px;
+            max-width: 100vw;
+            z-index: -1;
+            pointer-events: none;
+            opacity: 0.01;
+            overflow: hidden;
         }
 
         /* ——— Печать ——— */
@@ -1159,20 +1171,32 @@
         btn.disabled = true;
         btn.innerHTML = 'Сохранение…';
 
-        const source = screenResult;
-        source.classList.add('pdf-capture');
-        let iconReplacements = [];
+        let host = null;
 
         try {
-            iconReplacements = await replaceIconsWithPngForPdf(source, '#731DD8');
+            // Рендерим PDF со скрытого клона, чтобы экран не мигал белым
+            host = document.createElement('div');
+            host.className = 'pdf-export-host';
+            host.setAttribute('aria-hidden', 'true');
 
-            // Ждём отрисовку картинок
+            const clone = screenResult.cloneNode(true);
+            clone.removeAttribute('id');
+            clone.hidden = false;
+            clone.classList.remove('slide-in-right', 'slide-in-left');
+            clone.classList.add('pdf-capture');
+            clone.querySelector('.result-actions')?.remove();
+
+            host.appendChild(clone);
+            document.body.appendChild(host);
+
+            await replaceIconsWithPngForPdf(clone, '#731DD8');
+
             await Promise.all(
-                iconReplacements.map(({ placeholder }) => {
-                    if (placeholder.complete) return Promise.resolve();
+                [...clone.querySelectorAll('img')].map(img => {
+                    if (img.complete) return Promise.resolve();
                     return new Promise(resolve => {
-                        placeholder.onload = resolve;
-                        placeholder.onerror = resolve;
+                        img.onload = resolve;
+                        img.onerror = resolve;
                     });
                 })
             );
@@ -1201,7 +1225,7 @@
                     jsPDF: { unit: 'mm', format: 'a4', orientation: 'portrait' },
                     pagebreak: { mode: ['avoid-all', 'css', 'legacy'] },
                 })
-                .from(source)
+                .from(clone)
                 .save();
 
             announce('PDF сохранён');
@@ -1210,8 +1234,7 @@
             announce('Не удалось сохранить PDF');
             alert('Не удалось сохранить PDF. Попробуйте ещё раз.');
         } finally {
-            restorePdfIcons(iconReplacements);
-            source.classList.remove('pdf-capture');
+            host?.remove();
             btn.disabled = false;
             btn.innerHTML = labelHtml;
         }
