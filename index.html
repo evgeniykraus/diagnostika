@@ -23,6 +23,11 @@
             padding: 0;
         }
 
+        /* Слайд карточки уезжает за край экрана — режем горизонтальный overflow на корне */
+        html {
+            overflow-x: hidden;
+        }
+
         body {
             min-height: 100vh;
             background: linear-gradient(160deg, var(--bg-deep) 0%, var(--bg-mid) 55%, #731DD8 100%);
